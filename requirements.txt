@@ -1,0 +1,11 @@
+auth0-python==3.19.0
+python-dotenv>=0.19.2
+authlib>=1.0
+requests>=2.27.1
+blinker==1.9.0
+click==8.2.1
+Flask==3.1.1
+itsdangerous==2.2.0
+Jinja2==3.1.6
+MarkupSafe==3.0.2
+Werkzeug==3.1.3

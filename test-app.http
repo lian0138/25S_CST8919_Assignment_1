@@ -1,0 +1,4 @@
+# test-app.http
+
+### Test GET Protected Route (without Authentication explicitly unauthorized)
+GET https://25s8919assignment1-agffbnapfnbmfrd9.canadacentral-01.azurewebsites.net/protected HTTP/1.1
