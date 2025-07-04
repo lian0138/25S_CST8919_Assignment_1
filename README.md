@@ -1,61 +1,79 @@
-# Auth0 Python Web App Sample
 
-This sample demonstrates how to add authentication to a Python web app using Auth0.
+# Assignment 1: Flask Web App with Auth0 and Structured Logging
 
-# Running the App
+This README covers the setup for a Flask app with Auth0 authentication, Azure deployment, structured logging, and alerting for unauthorized access or excessive usage.
 
-To run the sample, make sure you have `python3` and `pip` installed.
+## ✅ Setup Instructions
 
-Rename `.env.example` to `.env` and populate it with the client ID, domain, secret, callback URL and audience for your
-Auth0 app. If you are not implementing any API you can use `https://YOUR_DOMAIN.auth0.com/userinfo` as the audience.
-Also, add the callback URL to the settings section of your Auth0 client.
+### Auth0 Setup
+1. Log in to [Auth0](https://auth0.com/) and create a new **Regular web application** under Applications.
+2. Configure the app (after deploying the app on Azure) with:
+   - **Allowed Callback URLs**: `http://your-app-name.azurewebsites.net/callback`
+   - **Allowed Logout URLs**: `http://your-app-name.azurewebsites.net/`
+3. Record the **Domain**, **Client ID**, and **Client Secret** for use in `.env`.
 
-Register `http://localhost:3000/callback` as `Allowed Callback URLs` and `http://localhost:3000`
-as `Allowed Logout URLs` in your client settings.
+### Environment Variables (.env File)
+Create a `.env` file at the project root with the following:
+```env
+AUTH0_DOMAIN=your-auth0-domain.auth0.com
+AUTH0_CLIENT_ID=your-auth0-client-id
+AUTH0_CLIENT_SECRET=your-auth0-client-secret
+APP_SECRET_KEY=ALongRandomlyGeneratedString
+```
 
-Run `pip install -r requirements.txt` to install the dependencies and run `python server.py`.
-The app will be served at [http://localhost:3000/](http://localhost:3000/).
+### Azure Deployment
+1. In VS Code, press **F1** and select **Azure App Service: Create New Web App**.
+2. Follow prompts to name the app and select a resource group.
+3. After creation, press **F1** again and select **Azure App Service: Deploy to Web App** to deploy your Flask app to Azure.
+4. Ensure **Application Logging (stdout/stderr)** is enabled in **App Service Logs** under **Monitoring** in Azure Portal.
 
-# Running the App with Docker
+## 📌 Logging and Detection Logic
 
-To run the sample, make sure you have `docker` installed.
+### Logging (As Per Code)
+The app uses `app.logger` to emit structured JSON logs for key events with visual indicators as seen in the provided code:
+- **Successful Login**: Logs `"✅ Successful login"` and structured JSON (timestamp, user_id, email, route, ip) for every successful login at `/callback`.
+- **Failed Login**: Logs `"⚠️ Failed login attempt"` with error details and structured JSON on OAuth errors at `/callback`.
+- **Authorized Access to /protected**: Logs `"✅ Authorized access to protected route"` with user details in structured JSON.
+- **Unauthorized Access to /protected**: Logs `"⚠️ Unauthorized access attempt to protected route"` with structured JSON for unauthorized attempts.
 
-To run the sample with [Docker](https://www.docker.com/), make sure you have `docker` installed.
+Logs are output to stdout and captured by Azure App Service for analysis.
 
-Rename the .env.example file to .env, change the environment variables, and register the URLs as explained [previously](#running-the-app).
+### Detection Logic
+Detection focuses on identifying suspicious activity based on the code:
+- **Failed logins** (`login_failure`) or **unauthorized accesses** to `/protected` (`unauthorized_access`) are marked with `"WARNING: ⚠️"` in logs.
+- **Excessive usage** by a single user (tracked via `user_id` in logs) triggers an alert if accesses exceed a defined threshold.
 
-Run `sh exec.sh` to build and run the docker image in Linux or run `.\exec.ps1` to build
-and run the docker image on Windows.
+## 📊 KQL Query and Alert Logic
 
-## What is Auth0?
+### KQL Query 1 (Filter Warnings for Failed Logins/Unauthorized Access)
+This query filters logs containing warnings for failed logins or unauthorized access attempts:
+```kusto
+AppServiceConsoleLogs 
+| where ResultDescription contains "WARNING: ⚠️"
+| where Level contains "Informational"
+| order by TimeGenerated desc
+```
 
-Auth0 helps you to:
+### KQL Query 2 (Detect Excessive Access by User)
+This query detects if any user exceeds 10 accesses in 15 minutes:
+```kusto
+AppServiceConsoleLogs  
+| where ResultDescription contains "WARNING: ⚠️"  
+| where Level contains "Informational"  
+| order by TimeGenerated desc
+```
 
-* Add authentication with [multiple authentication sources](https://auth0.com/docs/identityproviders),
-either social like **Google, Facebook, Microsoft Account, LinkedIn, GitHub, Twitter, Box, Salesforce, among others**,or
-enterprise identity systems like **Windows Azure AD, Google Apps, Active Directory, ADFS or any SAML Identity Provider**.
-* Add authentication through more traditional **[username/password databases](https://docs.auth0.com/mysql-connection-tutorial)**.
-* Add support for **[linking different user accounts](https://auth0.com/docs/link-accounts)** with the same user.
-* Support for generating signed [JSON Web Tokens](https://auth0.com/docs/jwt) to call your APIs and
-**flow the user identity** securely.
-* Analytics of how, when and where users are logging in.
-* Pull data from other sources and add it to the user profile, through [JavaScript rules](https://auth0.com/docs/rules).
+### Alert Logic (Azure)
+1. In Azure Portal, go to **Log Analytics Workspace** > **Alerts** > **+ New Alert Rule**.
+2. Create an alert with this KQL:
+```KQL
+AppServiceConsoleLogs  
+| where ResultDescription contains "WARNING: ⚠️"  
+| where Level contains "Informational"  
+| order by TimeGenerated desc
+```
+Trigger alert if **any user** exceeds 10 accesses in 15 minutes
 
-## Create a free account in Auth0
-
-1. Go to [Auth0](https://auth0.com) and click Sign Up.
-2. Use Google, GitHub or Microsoft Account to login.
-
-## Issue Reporting
-
-If you have found a bug or if you have a feature request, please report them at this repository issues section.
-Please do not report security vulnerabilities on the public GitHub issue tracker.
-The [Responsible Disclosure Program](https://auth0.com/whitehat) details the procedure for disclosing security issues.
-
-## Author
-
-[Auth0](https://auth0.com)
-
-## License
-
-This project is licensed under the MIT license. See the [LICENSE](../LICENSE) file for more info.
+## Youtube
+This is the youtube link
+https://youtu.be/sJcZ7JbeQ-Y
